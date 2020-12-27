@@ -27,7 +27,7 @@ def compressor(model, image, save_path, image_latent=None, iterations=3000, log_
                 print(iteration, "Loss:", loss, "MSE (Latent): ", torch.mean(torch.square(latent_vector - image_latent)))
             generated_img = output.clone().detach().cpu()
             plot_image(generated_img)
-            save_image(generated_img, save_path, iteration + 1)
+            save_image(generated_img, save_path, 'GAN', iteration + 1)
 
     return latent_vector.cpu().detach()
 
@@ -37,6 +37,6 @@ def decompressor(model, image_latent, save_path):
 
     generated_img = output.clone().detach().cpu()
     plot_image(generated_img)
-    save_image(generated_img, save_path, 9999)
+    save_image(generated_img, save_path, 'GAN', 9999)
 
     return generated_img.cpu().detach()
