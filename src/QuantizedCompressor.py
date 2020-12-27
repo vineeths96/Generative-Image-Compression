@@ -1,6 +1,9 @@
+import os
 import torch
 import struct
 import numpy as np
+from networks import compressor, decompressor
+from utils import plot_image, save_image
 
 
 class QuantizedCompressor:
@@ -123,3 +126,28 @@ class QuantizedCompressor:
         elias_code = elias_code[1:]
 
         return n, elias_code
+
+
+def quantization_analysis(generator, compressed_vector, PATH):
+    QSGD_PATH = f'{PATH}/QSGD'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    os.makedirs(QSGD_PATH, exist_ok=True)
+
+    compressed_vector = torch.tensor(compressed_vector[0], dtype=torch.float32)
+
+    for q_bits in [1, 2, 4, 6, 8]:
+        lossy_compressor = QuantizedCompressor(device=device, quantization_level=q_bits)
+        quantized_compressed_vector, quantized_compressed_vector_len = lossy_compressor.compress(compressed_vector)
+        torch.save(quantized_compressed_vector, f"{QSGD_PATH}/ICV_{q_bits}.pt")
+        torch.save(quantized_compressed_vector_len, f"{QSGD_PATH}/ICVL_{q_bits}.pt")
+
+    for q_bits in [1, 2, 4, 6, 8]:
+        lossy_compressor = QuantizedCompressor(device=device, quantization_level=q_bits)
+        quantized_compressed_vector = torch.load(f"{QSGD_PATH}/ICV_{q_bits}.pt")
+        quantized_compressed_vector_len = torch.load(f"{QSGD_PATH}/ICVL_{q_bits}.pt")
+
+        latent_vector = lossy_compressor.decompress(quantized_compressed_vector, quantized_compressed_vector_len)
+        latent_vector = latent_vector.reshape(1, -1)
+        lossy_reconstructed_image = decompressor(generator, latent_vector, PATH)
+        plot_image(lossy_reconstructed_image)
+        save_image(lossy_reconstructed_image, PATH, 'QSGD', f'{q_bits}bits')
