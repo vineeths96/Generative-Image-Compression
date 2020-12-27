@@ -16,7 +16,7 @@ def main():
     plot_image(original_image)
     save_image(original_image, PATH, 'GAN')
 
-    image_compressed_vector = compressor(generator, original_image, PATH, iterations=1)
+    image_compressed_vector = compressor(generator, original_image, PATH)
     torch.save(image_compressed_vector, f"{PATH}/ICV.pt")
 
     quantization_analysis(generator, image_compressed_vector.clone(), PATH)
