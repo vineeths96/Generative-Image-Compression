@@ -1,0 +1,1 @@
+### Pre-trained GAN models will be automatically downloaded to this folder
