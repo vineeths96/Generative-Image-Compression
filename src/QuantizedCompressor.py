@@ -19,7 +19,9 @@ class QuantizedCompressor:
         self._encode_dict = self.elias_dict()
 
     def elias_dict(self):
-        s = (1 << self._quantization_level)
+        """Caching Elias codes"""
+
+        s = 1 << self._quantization_level
         keys = set(np.arange(0, s))
         encode_dict = dict.fromkeys(keys)
 
@@ -29,6 +31,8 @@ class QuantizedCompressor:
         return encode_dict
 
     def compress(self, tensor):
+        """Compress the tensors"""
+
         s = (1 << self._quantization_level) - 1
 
         norm = torch.norm(tensor)
@@ -56,7 +60,7 @@ class QuantizedCompressor:
 
         code_int_list = []
         for i in range(len(code) // self._sign_int_bit + 1):
-            code_chunk = '1' + code[i * self._sign_int_bit: (i + 1) * self._sign_int_bit]
+            code_chunk = "1" + code[i * self._sign_int_bit : (i + 1) * self._sign_int_bit]
             code_int_list.append(int(code_chunk, 2))
 
         compressed_tensor = torch.tensor(code_int_list, dtype=torch.int64, device=self._device)
@@ -65,6 +69,8 @@ class QuantizedCompressor:
         return compressed_tensor, compressed_tensor_size
 
     def decompress(self, compressed_tensor, compressed_tensor_size):
+        """Decompress the tensors"""
+
         s = (1 << self._quantization_level) - 1
 
         unpadded_compressed_tensor = compressed_tensor[:compressed_tensor_size]
@@ -100,12 +106,18 @@ class QuantizedCompressor:
         return norm * sign_array * xi_array
 
     def float_to_bin(self, num):
-        return format(struct.unpack('!I', struct.pack('!f', num))[0], '032b')
+        """Float to Binary representation"""
+
+        return format(struct.unpack("!I", struct.pack("!f", num))[0], "032b")
 
     def bin_to_float(self, binary):
-        return struct.unpack('!f', struct.pack('!I', int(binary, 2)))[0]
+        """Binary to Float representation"""
+
+        return struct.unpack("!f", struct.pack("!I", int(binary, 2)))[0]
 
     def elias_encode(self, n):
+        """Elias encoding"""
+
         elias_code = "0"
 
         while n > 1:
@@ -116,11 +128,13 @@ class QuantizedCompressor:
         return elias_code
 
     def elias_decode(self, elias_code):
+        """Elias decoding"""
+
         n = 1
 
         while elias_code[0] != "0":
-            m = int(elias_code[:n + 1], 2)
-            elias_code = elias_code[n + 1:]
+            m = int(elias_code[: n + 1], 2)
+            elias_code = elias_code[n + 1 :]
             n = m
 
         elias_code = elias_code[1:]
@@ -129,18 +143,29 @@ class QuantizedCompressor:
 
 
 def quantization_analysis(generator, compressed_vector, PATH):
-    QSGD_PATH = f'{PATH}/QSGD'
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    """
+    Quantization and lossy compression of a given vector. Save the reconstructed images.
+    :param generator: Generator model
+    :param compressed_vector: Latent vector
+    :param PATH: Path where images has to be saved
+    :return: None
+    """
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    QSGD_PATH = f"{PATH}/QSGD"
     os.makedirs(QSGD_PATH, exist_ok=True)
 
     compressed_vector = torch.tensor(compressed_vector[0], dtype=torch.float32)
 
+    # Compress and save the vectors
     for q_bits in [1, 2, 4, 6, 8]:
         lossy_compressor = QuantizedCompressor(device=device, quantization_level=q_bits)
         quantized_compressed_vector, quantized_compressed_vector_len = lossy_compressor.compress(compressed_vector)
         torch.save(quantized_compressed_vector, f"{QSGD_PATH}/ICV_{q_bits}.pt")
         torch.save(quantized_compressed_vector_len, f"{QSGD_PATH}/ICVL_{q_bits}.pt")
 
+    # Decompress, reconstruct and save the images
     for q_bits in [1, 2, 4, 6, 8]:
         lossy_compressor = QuantizedCompressor(device=device, quantization_level=q_bits)
         quantized_compressed_vector = torch.load(f"{QSGD_PATH}/ICV_{q_bits}.pt")
@@ -150,4 +175,4 @@ def quantization_analysis(generator, compressed_vector, PATH):
         latent_vector = latent_vector.reshape(1, -1)
         lossy_reconstructed_image = decompressor(generator, latent_vector, PATH)
         plot_image(lossy_reconstructed_image)
-        save_image(lossy_reconstructed_image, PATH, 'QSGD', f'{q_bits}bits')
+        save_image(lossy_reconstructed_image, PATH, "QSGD", f"{q_bits}bits")
