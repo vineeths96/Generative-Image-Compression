@@ -144,13 +144,6 @@ dmypy.json
 .idea
 __pycache__
 
-# This is where torch text datasets like IWSLT and WMT14 will be downloaded to
-src/.data
-src/data/*.csv
-src/data/iwslt
-src/data/wikitext-2
-src/data/wmt14
-
 # Jupyter notebook checkpoints
 .ipynb_checkpoints
 
@@ -160,3 +153,6 @@ docs/*.pptx
 
 # Tensorboard log files
 src/runs
+
+# Models
+models/
